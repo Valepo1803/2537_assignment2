@@ -51,12 +51,6 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use((req, res, next) => {
-    res.locals.navUser = req.session.username;
-    res.locals.navType = req.session.user_type;
-    next();
-});
-
 app.get("/", (req, res) => {
   res.render("index", { user: req.session.username || null });
 });
