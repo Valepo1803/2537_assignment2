@@ -1,0 +1,13 @@
+<div class="d-flex align-items-center mb-3">
+    <span class="fs-4 me-4"><%= user.username %> (<%= user.user_type %>)</span>
+    
+    <form action="/promote" method="POST" class="me-2">
+        <input type="hidden" name="username" value="<%= user.username %>">
+        <button class="btn btn-danger rounded-pill px-4">Promote to Admin</button>
+    </form>
+
+    <form action="/demote" method="POST">
+        <input type="hidden" name="username" value="<%= user.username %>">
+        <button class="btn btn-success rounded-pill px-4">Demote to User</button>
+    </form>
+</div>

@@ -1,0 +1,11 @@
+<%- include("templates/header") %>
+<div class="max-w-md mx-auto bg-white p-8 rounded shadow">
+    <h2 class="text-2xl font-bold mb-4">Sign Up</h2>
+    <form action='/signupSubmit' method='post' class="flex flex-col gap-3">
+        <input name='username' type='text' placeholder='username' class="border p-2 rounded">
+        <input name='email' type='email' placeholder='email' class="border p-2 rounded">
+        <input name='password' type='password' placeholder='password' class="border p-2 rounded">
+        <button class="bg-green-500 text-white py-2 rounded">Submit</button>
+    </form>
+</div>
+<%- include("templates/footer") %>

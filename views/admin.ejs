@@ -1,0 +1,11 @@
+<%- include("templates/header") %>
+
+<div class="container mt-4">
+    <h1 class="display-5 fw-bold mb-4">Users</h1>
+
+    <% for(let i=0; i < users.length; i++) { %>
+        <%- include('templates/user', { user: users[i] }) %>
+    <% } %>
+</div>
+
+<%- include("templates/footer") %>

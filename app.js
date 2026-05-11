@@ -22,6 +22,7 @@ const { database } = require("./databaseConnection");
 const userCollection = database.db(mongodb_database).collection("users");
 
 app.use(express.urlencoded({ extended: false }));
+app.set('view engine', 'ejs');
 
 let mongoStore = MongoStore.create({
     mongoUrl: `mongodb+srv://${mongodb_user}:${mongodb_password}@${mongodb_host}/${mongodb_session_database}`,
@@ -38,18 +39,26 @@ app.use(
     saveUninitialized: true,
   }),
 );
+app.use((req, res, next) => {
+    res.locals.currentURL = req.url;
+    res.locals.navLinks = [
+        { name: "Home", link: "/" },
+        { name: "Members", link: "/members" },
+        { name: "Login", link: "/login" },
+        { name: "Admin", link: "/admin" },
+        { name: "404", link: "/404" }
+    ];
+    next();
+});
+
+app.use((req, res, next) => {
+    res.locals.navUser = req.session.username;
+    res.locals.navType = req.session.user_type;
+    next();
+});
 
 app.get("/", (req, res) => {
-  if (!req.session.authenticated) {
-    let html = `<a href='/signup'><button>Sign up</button></a><br>
-        <a href='/login'><button>Log in</button></a>`;
-    res.send(html);
-  } else {
-    let html = `Hello, ${req.session.username}!<br>
-        <a href='/members'><button>Go to Members Area</button></a><br>
-        <a href='/signout'><button>Sign out</button></a>`;
-    res.send(html);
-  }
+  res.render("index", { user: req.session.username || null });
 });
 
 app.get("/signout", (req, res) => {
@@ -58,14 +67,7 @@ app.get("/signout", (req, res) => {
 });
 
 app.get('/signup', (req, res) => {
-    res.send(`
-        <form action='/signupSubmit' method='post'>
-            <input name='username' type='text' placeholder='username'><br>
-            <input name='email' type='email' placeholder='email'><br>
-            <input name='password' type='password' placeholder='password'><br>
-            <button>Submit</button>
-        </form>
-    `);
+    res.render("signup");
 });
 
 app.post('/signupSubmit', async (req, res) => {
@@ -84,7 +86,7 @@ app.post('/signupSubmit', async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    await userCollection.insertOne({username, email, password: hashedPassword});
+    await userCollection.insertOne({username, email, password: hashedPassword, user_type: 'user'});
     
     req.session.authenticated = true;
     req.session.username = username;
@@ -92,14 +94,7 @@ app.post('/signupSubmit', async (req, res) => {
 });
 
 app.get('/login', (req, res) => {
-    res.send(`
-        <h2>Log In</h2>
-        <form action='/loggingin' method='post'>
-            <input name='email' type='email' placeholder='email'><br>
-            <input name='password' type='password' placeholder='password'><br>
-            <button>Submit</button>
-        </form>
-    `);
+    res.render("login");
 });
 
 app.post('/loggingin', async (req, res) => {
@@ -110,6 +105,7 @@ app.post('/loggingin', async (req, res) => {
     if (user && await bcrypt.compare(password, user.password)) {
         req.session.authenticated = true;
         req.session.username = user.username;
+        req.session.user_type = user.user_type;
         req.session.cookie.maxAge = expireTime;
         res.redirect('/members');
     } else {
@@ -123,22 +119,41 @@ app.get('/members', (req, res) => {
         res.redirect('/');
         return;
     }
+    res.render("members", { username: req.session.username });
+});
 
-    const images = ['cat-1.jpg', 'cat-2.jpg', 'cat-3.jpg'];
-    const randomImage = images[Math.floor(Math.random() * images.length)];
+app.get('/admin', async (req, res) => {
+    if (!req.session.authenticated) {
+        res.redirect('/login');
+        return;
+    }
+    if (req.session.user_type !== 'admin') {
+        res.status(403);
+        res.send("Error 403: You do not have permission to view this page. <a href='/'>Back to Home</a>");
+        return;
+    }
 
-    res.send(`
-        <h1>Hello, ${req.session.username}!</h1>
-        <img src='/${randomImage}' style='width:300px;'><br>
-        <a href='/signout'><button>Sign out</button></a>
-    `);
+    const users = await userCollection.find().toArray();
+    res.render("admin", { users: users });
+});
+
+app.post('/promote', async (req, res) => {
+    const username = req.body.username;
+    await userCollection.updateOne({ username: username }, { $set: { user_type: 'admin' } });
+    res.redirect('/admin');
+});
+
+app.post('/demote', async (req, res) => {
+    const username = req.body.username;
+    await userCollection.updateOne({ username: username }, { $set: { user_type: 'user' } });
+    res.redirect('/admin');
 });
 
 app.use(express.static(__dirname + "/public"));
 
 app.use((req,res) => {
 	res.status(404);
-	res.send("Page not found - 404");
+	res.render("404");
 });
 
 app.listen(PORT, () => {
